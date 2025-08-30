@@ -2,34 +2,51 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>Kindleセールまとめ</title>
+  <title>Kindleセール（毎時更新）</title>
   <style>
-    body { font-family: sans-serif; padding: 2em; }
-    .item { margin-bottom: 20px; }
-    img { width: 100px; vertical-align: middle; }
+    body { font-family: sans-serif; padding: 20px; }
+    .book { display: flex; align-items: center; margin-bottom: 15px; }
+    .book img { width: 80px; height: auto; margin-right: 15px; }
+    .book-title { font-weight: bold; margin-bottom: 5px; }
+    .price { color: #c00; }
   </style>
 </head>
 <body>
   <h1>Kindleセール（毎時更新）</h1>
-  <div id="list">読み込み中...</div>
+  <div id="list">📖 読み込み中...</div>
 
   <script>
-    fetch("kindle-sale.json")
-      .then(res => res.json())
-      .then(data => {
-        const container = document.getElementById("list");
-        container.innerHTML = '';
-        data.forEach(item => {
-          container.innerHTML += `
-            <div class="item">
-              <a href="${item.url}" target="_blank">
-                <img src="${item.image}">
-                <span>${item.title}</span><br>
-                <span><s>${item.oldPrice}</s> → <strong>${item.salePrice}</strong></span>
-              </a>
-            </div>`;
+    async function loadData() {
+      try {
+        const res = await fetch('kindle-sale.json');  // 同じリポジトリ内のJSONを読む
+        const data = await res.json();
+        const list = document.getElementById('list');
+        list.innerHTML = "";
+
+        if (data.length === 0) {
+          list.innerHTML = "<p>現在セール情報は取得できませんでした。</p>";
+          return;
+        }
+
+        data.forEach(book => {
+          const div = document.createElement('div');
+          div.className = 'book';
+          div.innerHTML = `
+            <img src="${book.image}" alt="">
+            <div>
+              <div class="book-title"><a href="${book.url}" target="_blank">${book.title}</a></div>
+              <div>定価: ${book.oldPrice}</div>
+              <div class="price">セール: ${book.salePrice}</div>
+            </div>
+          `;
+          list.appendChild(div);
         });
-      });
+      } catch (err) {
+        document.getElementById('list').innerHTML = "❌ 読み込みエラー: " + err;
+      }
+    }
+
+    loadData();
   </script>
 </body>
 </html>
