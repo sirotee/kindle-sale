@@ -20,9 +20,15 @@ jobs:
         with:
           node-version: '20'
       - run: npm install
+
+      - name: Generate .env file
+        run: |
+          echo "AMAZON_ACCESS_KEY=${{ secrets.AMAZON_ACCESS_KEY }}" >> .env
+          echo "AMAZON_SECRET_KEY=${{ secrets.AMAZON_SECRET_KEY }}" >> .env
+          echo "AMAZON_ASSOCIATE_TAG=${{ secrets.AMAZON_ASSOCIATE_TAG }}" >> .env
+
       - run: node generate-kindle-sale-json.js
 
-      # ← ここで生成結果を確認
       - run: |
           echo "📄 ディレクトリ内のファイル一覧:"
           ls -la
