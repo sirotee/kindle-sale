@@ -4,7 +4,7 @@
   "license": "MIT",
   "main": "generate-kindle-sale-json.js",
   "dependencies": {
-    "amazon-product-api": "0.4.4",
+    "paapi5-nodejs-sdk": "1.0.0",
     "dotenv": "16.4.5"
   }
 }
