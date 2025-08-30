@@ -1,0 +1,23 @@
+name: Kindle Sale Auto Update
+
+on:
+  schedule:
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - run: npm install amazon-pa-api50
+      - run: node generate-kindle-sale-json.js
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add kindle-sale.json
+          git commit -m "Update Kindle sale JSON" || echo "No changes"
+          git push
