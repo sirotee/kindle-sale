@@ -2,12 +2,16 @@ name: Kindle Sale Auto Update
 
 on:
   schedule:
-    - cron: '0 * * * *'  # 毎時0分に実行
-  workflow_dispatch:     # 手動実行も可
+    - cron: '0 * * * *'   # 毎時0分
+  workflow_dispatch:
 
 jobs:
   update:
     runs-on: ubuntu-latest
+
+    # ← これが超重要。push する権限を付与
+    permissions:
+      contents: write
 
     env:
       AMAZON_ACCESS_KEY: ${{ secrets.AMAZON_ACCESS_KEY }}
@@ -15,30 +19,30 @@ jobs:
       AMAZON_ASSOCIATE_TAG: ${{ secrets.AMAZON_ASSOCIATE_TAG }}
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true   # GITHUB_TOKEN をそのまま使う
 
-      - uses: actions/setup-node@v3
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
       - run: npm install
 
-      - name: Run script to generate kindle-sale.json
+      - name: Generate JSON
         run: node ./generate-kindle-sale-json.js
 
-      - name: Debug file list
+      - name: Debug
         run: |
-          echo "📂 作業ディレクトリ:"
-          pwd
-          echo "📄 ファイル一覧:"
-          find . -type f
-          echo "📑 kindle-sale.json の中身:"
-          cat kindle-sale.json || echo "❌ kindle-sale.json は存在しません"
+          echo "📄 ファイル一覧"; ls -la
+          echo "📑 kindle-sale.json"; cat kindle-sale.json || echo "なし"
 
-      - name: Commit & push kindle-sale.json
+      - name: Commit & Push
         run: |
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add kindle-sale.json
-          git commit -m "Update Kindle sale JSON" || echo "🟡 No changes to commit"
+          git commit -m "Update Kindle sale JSON" || echo "No changes"
+          # 念のため push 先に GITHUB_TOKEN を明示
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
           git push
