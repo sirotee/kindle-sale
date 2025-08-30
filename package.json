@@ -1,0 +1,12 @@
+{
+  "name": "kindle-sale-updater",
+  "version": "1.0.0",
+  "description": "Automatically updates Kindle sale data every hour.",
+  "main": "generate-kindle-sale-json.js",
+  "scripts": {
+    "start": "node generate-kindle-sale-json.js"
+  },
+  "dependencies": {
+    "amazon-pa-api50": "^1.0.7"
+  }
+}

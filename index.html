@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Kindleセールまとめ</title>
+  <style>
+    body { font-family: sans-serif; padding: 2em; }
+    .item { margin-bottom: 20px; }
+    img { width: 100px; vertical-align: middle; }
+  </style>
+</head>
+<body>
+  <h1>Kindleセール（毎時更新）</h1>
+  <div id="list">読み込み中...</div>
+
+  <script>
+    fetch("kindle-sale.json")
+      .then(res => res.json())
+      .then(data => {
+        const container = document.getElementById("list");
+        container.innerHTML = '';
+        data.forEach(item => {
+          container.innerHTML += `
+            <div class="item">
+              <a href="${item.url}" target="_blank">
+                <img src="${item.image}">
+                <span>${item.title}</span><br>
+                <span><s>${item.oldPrice}</s> → <strong>${item.salePrice}</strong></span>
+              </a>
+            </div>`;
+        });
+      });
+  </script>
+</body>
+</html>
