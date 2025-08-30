@@ -2,8 +2,8 @@ name: Kindle Sale Auto Update
 
 on:
   schedule:
-    - cron: '0 * * * *'
-  workflow_dispatch:
+    - cron: '0 * * * *'  # 毎時0分に実行
+  workflow_dispatch:     # 手動実行も可
 
 jobs:
   update:
@@ -16,28 +16,29 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
+
       - uses: actions/setup-node@v3
         with:
           node-version: '20'
+
       - run: npm install
 
-      - name: Generate .env file
+      - name: Run script to generate kindle-sale.json
+        run: node ./generate-kindle-sale-json.js
+
+      - name: Debug file list
         run: |
-          echo "AMAZON_ACCESS_KEY=${{ secrets.AMAZON_ACCESS_KEY }}" >> .env
-          echo "AMAZON_SECRET_KEY=${{ secrets.AMAZON_SECRET_KEY }}" >> .env
-          echo "AMAZON_ASSOCIATE_TAG=${{ secrets.AMAZON_ASSOCIATE_TAG }}" >> .env
-
-      - run: node generate-kindle-sale-json.js
-
-      - run: |
-          echo "📄 ディレクトリ内のファイル一覧:"
-          ls -la
-          echo "📑 kindle-sale.json の中身（存在すれば表示）:"
+          echo "📂 作業ディレクトリ:"
+          pwd
+          echo "📄 ファイル一覧:"
+          find . -type f
+          echo "📑 kindle-sale.json の中身:"
           cat kindle-sale.json || echo "❌ kindle-sale.json は存在しません"
 
-      - run: |
+      - name: Commit & push kindle-sale.json
+        run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
           git add kindle-sale.json
-          git commit -m "Update Kindle sale JSON" || echo "No changes"
+          git commit -m "Update Kindle sale JSON" || echo "🟡 No changes to commit"
           git push
