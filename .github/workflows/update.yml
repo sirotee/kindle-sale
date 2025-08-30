@@ -21,6 +21,14 @@ jobs:
           node-version: '20'
       - run: npm install
       - run: node generate-kindle-sale-json.js
+
+      # ← ここで生成結果を確認
+      - run: |
+          echo "📄 ディレクトリ内のファイル一覧:"
+          ls -la
+          echo "📑 kindle-sale.json の中身（存在すれば表示）:"
+          cat kindle-sale.json || echo "❌ kindle-sale.json は存在しません"
+
       - run: |
           git config user.name "github-actions"
           git config user.email "actions@github.com"
