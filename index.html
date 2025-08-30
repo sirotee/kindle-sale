@@ -1,51 +1,68 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Kindleセール（毎時更新）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: sans-serif; padding: 20px; }
-    .book { display: flex; align-items: center; margin-bottom: 15px; }
-    .book img { width: 80px; height: auto; margin-right: 15px; }
-    .book-title { font-weight: bold; margin-bottom: 5px; }
-    .price { color: #c00; }
+    body { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif; padding: 20px; max-width: 900px; margin: 0 auto; }
+    h1 { margin-bottom: 16px; }
+    .meta { color:#666; font-size: 14px; margin-bottom: 16px; }
+    .book { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid #eee; }
+    .book img { width: 90px; height: 130px; object-fit: cover; background:#f3f3f3; border:1px solid #eee; }
+    .book-title { font-weight: 700; margin-bottom: 6px; line-height: 1.4; }
+    .price { color: #c00; font-weight: 700; }
+    .muted { color:#666; }
+    @media (max-width: 520px){ .book { align-items: center; } .book img { width:72px; height:100px; } }
   </style>
 </head>
 <body>
   <h1>Kindleセール（毎時更新）</h1>
-  <div id="list">📖 読み込み中...</div>
+  <div class="meta" id="meta">読み込み中…</div>
+  <div id="list">📖 データ取得中...</div>
 
   <script>
+    function esc(s){ return (s || "").replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
     async function loadData() {
+      const list = document.getElementById('list');
+      const meta = document.getElementById('meta');
       try {
-        const res = await fetch('kindle-sale.json');  // 同じリポジトリ内のJSONを読む
+        // キャッシュ回避のクエリを付与
+        const res = await fetch('kindle-sale.json?t=' + Date.now());
         const data = await res.json();
-        const list = document.getElementById('list');
+
+        meta.textContent = `取得件数：${data.length}件`;
         list.innerHTML = "";
 
-        if (data.length === 0) {
+        if (!Array.isArray(data) || data.length === 0) {
           list.innerHTML = "<p>現在セール情報は取得できませんでした。</p>";
           return;
         }
 
         data.forEach(book => {
-          const div = document.createElement('div');
-          div.className = 'book';
-          div.innerHTML = `
-            <img src="${book.image}" alt="">
+          const img = book.image && book.image.startsWith('http') ? book.image : '';
+          const title = esc(book.title);
+          const oldP  = esc(book.oldPrice || '');
+          const saleP = esc(book.salePrice || '');
+
+          const wrap = document.createElement('div');
+          wrap.className = 'book';
+          wrap.innerHTML = `
+            <img src="${img || 'data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2290%22 height=%22130%22><rect width=%2290%22 height=%22130%22 fill=%22%23f3f3f3%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2212%22>NO IMAGE</text></svg>'}" alt="">
             <div>
-              <div class="book-title"><a href="${book.url}" target="_blank">${book.title}</a></div>
-              <div>定価: ${book.oldPrice}</div>
-              <div class="price">セール: ${book.salePrice}</div>
+              <div class="book-title"><a href="${book.url}" target="_blank" rel="noopener noreferrer">${title}</a></div>
+              <div class="muted">定価: <s>${oldP}</s></div>
+              <div class="price">セール: ${saleP}</div>
             </div>
           `;
-          list.appendChild(div);
+          list.appendChild(wrap);
         });
       } catch (err) {
-        document.getElementById('list').innerHTML = "❌ 読み込みエラー: " + err;
+        meta.textContent = '';
+        list.innerHTML = "❌ 読み込みエラー: " + esc(String(err));
       }
     }
-
     loadData();
   </script>
 </body>
