@@ -1,5 +1,5 @@
 const fs = require('fs');
-const AmazonPaapi = require('amazon-pa-api50');
+const AmazonPaapi = require('amazon-paapi');
 
 const client = new AmazonPaapi.AmazonPaapi({
   accessKey: 'AKPA0A3DFU1756557189',
