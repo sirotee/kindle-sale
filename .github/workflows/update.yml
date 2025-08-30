@@ -8,6 +8,12 @@ on:
 jobs:
   update:
     runs-on: ubuntu-latest
+
+    env:
+      AMAZON_ACCESS_KEY: ${{ secrets.AMAZON_ACCESS_KEY }}
+      AMAZON_SECRET_KEY: ${{ secrets.AMAZON_SECRET_KEY }}
+      AMAZON_ASSOCIATE_TAG: ${{ secrets.AMAZON_ASSOCIATE_TAG }}
+
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-node@v3
