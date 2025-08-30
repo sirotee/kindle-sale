@@ -1,76 +1,80 @@
+// PA-API v5 版：キーワード検索 → 複数ページ → セールっぽいものを抽出
 const fs = require('fs');
-const amazon = require('amazon-product-api');
+const paapi = require('paapi5-nodejs-sdk');
 
-// 必要に応じて dotenv（ローカル実行用）
-// GitHub Actions では env で渡しているので無くてもOK
 try { require('dotenv').config(); } catch (_) {}
 
-const client = amazon.createClient({
-  awsId: process.env.AMAZON_ACCESS_KEY,
-  awsSecret: process.env.AMAZON_SECRET_KEY,
-  awsTag: process.env.AMAZON_ASSOCIATE_TAG,
-  // 日本向けエンドポイント指定（これ重要）
-  host: 'webservices.amazon.co.jp',
-  region: 'JP'
+const config = new paapi.Configuration({
+  accessKey: process.env.AMAZON_ACCESS_KEY,
+  secretKey: process.env.AMAZON_SECRET_KEY,
+  host: 'webservices.amazon.co.jp', // JP エンドポイント
+  region: 'us-west-2'               // JP は us-west-2 固定
 });
 
-// amazon-product-api のエラーは配列＆深いネストになることがある
-function readApiError(err) {
-  try {
-    // 典型: err[0].Error[0].Message[0]
-    const msg =
-      (err && err[0] && err[0].Error && err[0].Error[0] && err[0].Error[0].Message && err[0].Error[0].Message[0]) ||
-      (err && err.message) ||
-      JSON.stringify(err);
-    return msg;
-  } catch (_) {
-    return String(err);
-  }
+const api = new paapi.DefaultApi(config);
+
+// 取得したいフィールド
+const resources = [
+  'Images.Primary.Medium',
+  'ItemInfo.Title',
+  'Offers.Listings.Price',
+  'Offers.Listings.SavingBasis',
+  'Offers.Summaries.LowestPrice'
+];
+
+function toItem(x) {
+  const title = x?.ItemInfo?.Title?.DisplayValue || '';
+  const image = x?.Images?.Primary?.Medium?.URL || '';
+  const url   = x?.DetailPageURL || '';
+  const listing = x?.Offers?.Listings?.[0];
+  const oldPrice = listing?.SavingBasis?.DisplayAmount || '';  // 定価（比較基準）
+  const salePrice = listing?.Price?.DisplayAmount || (x?.Offers?.Summaries?.[0]?.LowestPrice?.DisplayAmount || '');
+  return { title, image, url, oldPrice, salePrice };
 }
 
 (async () => {
-  let all = [];
   try {
-    // 1〜5ページをトライ。ページ単位で失敗しても継続
+    const keywords = 'コミック OR 小説 OR ライトノベル OR ビジネス OR Kindle';
+    let all = [];
+
+    // 1〜5ページ分取得（必要なら 10 まで増やせます）
     for (let page = 1; page <= 5; page++) {
       console.log(`🛰 Fetching page ${page}...`);
+      const req = new paapi.SearchItemsRequest();
+      req['PartnerTag']   = process.env.AMAZON_ASSOCIATE_TAG; // 例: xxxx-22
+      req['PartnerType']  = 'Associates';
+      req['Marketplace']  = 'www.amazon.co.jp';
+      req['Keywords']     = keywords;
+      req['ItemPage']     = page;
+      req['Resources']    = resources;
+
       try {
-        const res = await client.itemSearch({
-          keywords: 'Kindle',
-          searchIndex: 'KindleStore',
-          responseGroup: 'ItemAttributes,Offers,Images',
-          itemPage: page
-        });
-        all = all.concat(res || []);
+        const res = await api.searchItems(req);
+        const items = res?.SearchResult?.Items || [];
+        all = all.concat(items);
       } catch (e) {
-        console.error(`❌ Page ${page} error:`, readApiError(e));
-        // 次のページに進む
+        // v5 のエラーはオブジェクトが深いことがあるので安全に文字列化
+        const msg = e?.response?.text ? await e.response.text() : (e?.message || JSON.stringify(e));
+        console.error(`❌ page ${page} error:`, msg);
       }
     }
 
     console.log('取得件数(生データ):', all.length);
 
-    // セールっぽいものに絞る（定価と現在価格が違う）
-    const data = (all || [])
-      .map(item => {
-        const title = item?.ItemAttributes?.[0]?.Title?.[0] || '';
-        const image = item?.LargeImage?.[0]?.URL?.[0] || '';
-        const url = (item?.DetailPageURL?.[0] || '');
-        const oldPrice = item?.ItemAttributes?.[0]?.ListPrice?.[0]?.FormattedPrice?.[0] || '';
-        const salePrice = item?.OfferSummary?.[0]?.LowestNewPrice?.[0]?.FormattedPrice?.[0] || '';
-        return { title, image, url, oldPrice, salePrice };
-      })
-      .filter(b => b.title && b.oldPrice && b.salePrice && b.oldPrice !== b.salePrice);
+    // セールらしさ：定価(SavingBasis)と現在価格が両方あり、違うもの
+    const data = all
+      .map(toItem)
+      .filter(b => b.title && b.salePrice && b.oldPrice && b.oldPrice !== b.salePrice)
+      .slice(0, 50); // 出力を最大50件に制限
 
     console.log('抽出件数(セール品):', data.length);
 
-    // 空でもファイルは必ず書く（フロントで表示できるように）
     fs.writeFileSync('kindle-sale.json', JSON.stringify(data, null, 2));
     console.log('✅ kindle-sale.json を作成しました！');
   } catch (err) {
-    console.error('❌ Amazon API fatal error:', readApiError(err));
-    // 何があっても空配列を書き出して終了（git add がコケないように）
-    try { fs.writeFileSync('kindle-sale.json', JSON.stringify([], null, 2)); } catch (_) {}
+    const msg = err?.message || JSON.stringify(err);
+    console.error('❌ fatal:', msg);
+    fs.writeFileSync('kindle-sale.json', JSON.stringify([], null, 2));
     process.exit(1);
   }
 })();
