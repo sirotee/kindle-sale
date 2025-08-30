@@ -1,5 +1,3 @@
-require('dotenv').config();
-
 const fs = require('fs');
 const amazon = require('amazon-product-api');
 
@@ -11,28 +9,43 @@ const client = amazon.createClient({
 
 (async () => {
   try {
-    console.log("Amazon API から取得中…");
-    const results = await client.itemSearch({
-      keywords: 'Kindle',
-      searchIndex: 'KindleStore',
-      responseGroup: 'ItemAttributes,Offers,Images'
-    });
+    let all = [];
 
-    console.log("取得件数:", results.length);
+    // 1〜5ページ分まとめて取る（最大50件程度）
+    for (let page = 1; page <= 5; page++) {
+      console.log(`📡 Fetching page ${page}...`);
+      const res = await client.itemSearch({
+        keywords: 'Kindle',
+        searchIndex: 'KindleStore',
+        responseGroup: 'ItemAttributes,Offers,Images',
+        itemPage: page
+      });
+      all = all.concat(res);
+    }
 
-    const data = results.map(item => ({
-      title: item?.ItemAttributes?.[0]?.Title?.[0] || '',
-      image: item?.LargeImage?.[0]?.URL?.[0] || '',
-      url: (item?.DetailPageURL?.[0] || '') + (process.env.AMAZON_ASSOCIATE_TAG ? `?tag=${process.env.AMAZON_ASSOCIATE_TAG}` : ''),
-      oldPrice: item?.ItemAttributes?.[0]?.ListPrice?.[0]?.FormattedPrice?.[0] || 'N/A',
-      salePrice: item?.OfferSummary?.[0]?.LowestNewPrice?.[0]?.FormattedPrice?.[0] || 'N/A'
-    }));
+    console.log("取得件数 (生データ):", all.length);
+
+    // セール品だけに絞り込み
+    const data = all
+      .map(item => {
+        const oldP = item.ItemAttributes?.[0]?.ListPrice?.[0]?.FormattedPrice?.[0] || '';
+        const saleP = item.OfferSummary?.[0]?.LowestNewPrice?.[0]?.FormattedPrice?.[0] || '';
+        return {
+          title: item.ItemAttributes?.[0]?.Title?.[0] || '',
+          image: item.LargeImage?.[0]?.URL?.[0] || '',
+          url: item.DetailPageURL?.[0] || '',
+          oldPrice: oldP,
+          salePrice: saleP
+        };
+      })
+      .filter(b => b.oldPrice && b.salePrice && b.oldPrice !== b.salePrice);
+
+    console.log("抽出件数 (セール品):", data.length);
 
     fs.writeFileSync('kindle-sale.json', JSON.stringify(data, null, 2));
     console.log("✅ kindle-sale.json を作成しました！");
   } catch (err) {
     console.error("❌ Amazon API error:", err);
-    // エラーでも空配列でファイルは残す（git add のため）
-    fs.writeFileSync('kindle-sale.json', JSON.stringify([], null, 2));
+    process.exit(1);
   }
 })();
