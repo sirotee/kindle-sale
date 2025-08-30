@@ -1,28 +1,26 @@
 const fs = require('fs');
-const AmazonPaapi = require('amazon-paapi');
+const amazon = require('amazon-product-api');
 
-const client = new AmazonPaapi.AmazonPaapi({
-  accessKey: 'AKPA0A3DFU1756557189',
-  secretKey: 'OdYhCNLoIfEk8HkAyQTpvkM+EoIBsIRfAi6KMQrB',
-  partnerTag: 'amazon-2022-22',
-  region: 'JP'
+const client = amazon.createClient({
+  awsId: process.env.AMAZON_ACCESS_KEY,
+  awsSecret: process.env.AMAZON_SECRET_KEY,
+  awsTag: 'amazon-2022-22'
 });
 
-(async () => {
-  const res = await client.searchItems({
-    keywords: 'Kindle セール',
-    searchIndex: 'KindleStore',
-    itemCount: 10,
-    sortBy: 'Price:LowToHigh'
-  });
-
-  const data = res.itemsResult.items.map(item => ({
-    title: item.itemInfo.title.displayValue,
-    image: item.images.primary.medium.url,
-    url: `${item.detailPageURL}?tag=amazon-2022-22`,
-    oldPrice: item.offers?.listings?.[0]?.price?.displayAmount || 'N/A',
-    salePrice: item.offers?.listings?.[0]?.savingBasis?.displayAmount || item.offers?.listings?.[0]?.price?.displayAmount || 'N/A'
+client.itemSearch({
+  keywords: 'Kindle',
+  searchIndex: 'KindleStore',
+  responseGroup: 'ItemAttributes,Offers,Images',
+  sort: 'price'
+}).then(function(results){
+  const data = results.map(item => ({
+    title: item.ItemAttributes[0].Title[0],
+    image: item.LargeImage?.[0]?.URL?.[0] || '',
+    url: item.DetailPageURL[0],
+    oldPrice: item.ItemAttributes[0].ListPrice?.[0]?.FormattedPrice?.[0] || 'N/A',
+    salePrice: item.OfferSummary?.[0]?.LowestNewPrice?.[0]?.FormattedPrice?.[0] || 'N/A'
   }));
-
   fs.writeFileSync('kindle-sale.json', JSON.stringify(data, null, 2));
-})();
+}).catch(function(err){
+  console.error("Amazon API error:", err);
+});
