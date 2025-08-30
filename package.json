@@ -1,10 +1,10 @@
 {
   "name": "kindle-sale",
   "version": "1.0.0",
-  "main": "index.js",
   "license": "MIT",
+  "main": "generate-kindle-sale-json.js",
   "dependencies": {
-    "amazon-product-api": "^1.0.0",
-    "dotenv": "^16.0.0"
+    "amazon-product-api": "0.4.4",
+    "dotenv": "16.4.5"
   }
 }
