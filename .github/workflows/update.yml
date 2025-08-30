@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: '20'
-      - run: npm install amazon-pa-api50
+      - run: npm install amazon-paapi
       - run: node generate-kindle-sale-json.js
       - run: |
           git config user.name "github-actions"
